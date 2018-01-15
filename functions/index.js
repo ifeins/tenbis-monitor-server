@@ -13,6 +13,7 @@ const TENBIS_API_URL = 'https://www.10bis.co.il/api'
 const USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3'
 
 const DAILY_LUNCH_BUDGET = 40;
+const MAX_LUNCH_LIMIT = 150;
 
 process.on('unhandledRejection', (reason, p) => {
   console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
@@ -135,8 +136,8 @@ function buildResponse(transactions) {
     const monthlyLunchBudget = workDays * DAILY_LUNCH_BUDGET;
     const totalSpent = sumLunchTransactions(transactions);
     const remainingMonthlyLunchBudget = monthlyLunchBudget - totalSpent;
-    const averageLunchSpending = totalSpent / transactions.length;
-    const remainingAverageLunchSpending = remainingMonthlyLunchBudget / remainingLunches;
+    const averageLunchSpending = getAverageLunchSpending(totalSpent, transactions);
+    const remainingAverageLunchSpending = getRemainingAverageLunchSpending(remainingMonthlyLunchBudget, remainingLunches);
 
     const response = {
       summary: {
@@ -207,6 +208,20 @@ function hasRemainingLunchToday(transactions, date) {
     .find(t => t.date.isSame(date, 'day') && t.date.hour() > 17);
   
   return todayLunchTransaction ? false : true;
+}
+
+function getAverageLunchSpending(totalSpent, transactions) {
+  if (transactions.length === 0) return 0;
+  return totalSpent / transactions.length;
+}
+
+function getRemainingAverageLunchSpending(remainingMonthlyLunchBudget, remainingLunches) {
+  if (remainingLunches <= 0) return 0;
+
+  let average = Math.min(remainingMonthlyLunchBudget / remainingLunches, MAX_LUNCH_LIMIT);
+  average = Math.max(average, 0);
+
+  return average;
 }
 
 function getMonthHolidays(year, month) {
