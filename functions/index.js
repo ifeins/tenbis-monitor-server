@@ -163,32 +163,32 @@ function parseTransactionDate(transactionDate) {
 }
 
 function getWorkDays(year, month) {
-  day = moment([year, month, 1]);
+  let date = moment([year, month, 1]);
   let workDays = 0;
 
   // as long as we haven't moved to the next month
-  while (day.month() == month) {
-    if (day.isoWeekday()) {
+  while (date.month() == month) {
+    if (date.day() < 5) { // Fri: 5, Sat: 6
       workDays++;
     }
 
-    day = day.add(1, 'days');
+    date = date.add(1, 'days');
   }
 
   return workDays;
 }
 
 function getRemainingWorkDays() {
-  let day = moment.tz('Asia/Jerusalem');
-  const month = day.month();
+  let date = moment.tz('Asia/Jerusalem');
+  const month = date.month();
 
   let remainingDays = 0;
-  while (day.month() == month) {
-    if (day.isoWeekday()) {
+  while (date.month() == month) {
+    if (date.day() < 5) { // Fri: 5, Sat: 6
       remainingDays++;
     }
 
-    day = day.add(1, 'days');
+    date = date.add(1, 'days');
   }
 
   return remainingDays;
