@@ -1,5 +1,6 @@
 const axios = require('axios');
 const moment = require('moment');
+const values = require('object.values');
 require('moment-timezone');
 
 const Hebcal = require('hebcal');
@@ -9,11 +10,17 @@ const admin = require('firebase-admin');
 admin.initializeApp(functions.config().firebase);
 const db = admin.firestore();
 
+if (!Object.values) {
+  values.shim();
+}
+
 const TENBIS_API_URL = 'https://www.10bis.co.il/api'
 const USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3'
 
 const DAILY_LUNCH_BUDGET = 40;
 const MAX_LUNCH_LIMIT = 150;
+
+const HOLIDAY_NAMES = []; // TODO fill PayPal holidays names
 
 process.on('unhandledRejection', (reason, p) => {
   console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
@@ -77,9 +84,9 @@ exports.getTransactions = functions.https.onRequest((req, res) => {
     .catch(err => {
       console.log(err);
       if (err.status && err.data) {
-        res.status(err.status).send(JSON.stringify(err.data.toJSON()));
+        res.status(err.status).send(JSON.stringify(err.data.toString()));
       } else {
-        res.status(500).send(JSON.stringify(err.toJSON()));
+        res.status(500).send(JSON.stringify(err.toString()));
       }
     });
 });
@@ -166,10 +173,11 @@ function parseTransactionDate(transactionDate) {
 function getWorkDays(year, month) {
   let date = moment([year, month, 1]);
   let workDays = 0;
+  const holidays = getMonthHolidays(year, month);
 
   // as long as we haven't moved to the next month
   while (date.month() == month) {
-    if (date.day() < 5) { // Fri: 5, Sat: 6
+    if (isWorkDay(holidays, date)) {
       workDays++;
     }
 
@@ -183,31 +191,28 @@ function getRemainingLunches(transactions) {
   let remainingLunches = 0;
   let date = moment.tz('Asia/Jerusalem');
   const currentMonth = date.month();
-
-  if (!hasRemainingLunchToday(transactions, date)) {
-    date = date.add(1, 'days');
-  }
+  const holidays = getMonthHolidays(date.year(), date.month());
 
   while (date.month() == currentMonth) {
-    if (date.day() < 5) { // Fri: 5, Sat: 6
+    if (hasRemainingLunch(transactions, holidays, date)) {
       remainingLunches++;
     }
 
-    date = date.add(1, 'days');
+    date = date.add(1, 'days').hour(0).minute(0).second(0).millisecond(0);
   }
 
   return remainingLunches;
 }
 
-function hasRemainingLunchToday(transactions, date) {
-  if (date.hour() >= 17) {
+function hasRemainingLunch(transactions, holidays, date) {
+  if (date.hour() >= 17 || !isWorkDay(holidays, date)) {
     return false;
   }
 
-  const todayLunchTransaction = transactions
-    .find(t => t.date.isSame(date, 'day') && t.date.hour() > 17);
+  const lunchAtGivenDate = transactions
+    .find(t => t.date.isSame(date, 'day') && t.date.hour() < 17);
   
-  return todayLunchTransaction ? false : true;
+  return lunchAtGivenDate ? false : true;
 }
 
 function getAverageLunchSpending(totalSpent, transactions) {
@@ -224,6 +229,13 @@ function getRemainingAverageLunchSpending(remainingMonthlyLunchBudget, remaining
   return average;
 }
 
+function sumLunchTransactions(transactions) {
+  return transactions
+    .filter(t => t.date.hour() < 17)
+    .map(t => t.amount)
+    .reduce((total, amount) => total + amount);
+}
+
 function getMonthHolidays(year, month) {
   const gregYear = new Hebcal.GregYear(year, month + 1);
   const holidays = 
@@ -233,14 +245,17 @@ function getMonthHolidays(year, month) {
         date: event[0].date.greg()
       }
     })
-    .filter(event => {
-      !event.name.includes('Shabbat') && !event.name.includes('Rosh Chodesh')
-    });
+    .filter(event => HOLIDAY_NAMES.includes(event.name));
+
+  return holidays;
 }
 
-function sumLunchTransactions(transactions) {
-  return transactions
-    .filter(t => t.date.hour() < 17)
-    .map(t => t.amount)
-    .reduce((total, amount) => total + amount);
+function isWorkDay(holidays, date) {
+  // Fri: 5, Sat: 6
+  return date.day() < 5 && !isHoliday(holidays, date);
+}
+
+function isHoliday(holidays, date) {
+  const holiday = holidays.find(holiday => moment(holiday.date).isSame(date, 'day'));
+  return holiday ? true : false;
 }

@@ -14,7 +14,8 @@
     "firebase-functions": "^0.7.1",
     "hebcal": "^2.2.6",
     "moment": "^2.20.1",
-    "moment-timezone": "^0.5.14"
+    "moment-timezone": "^0.5.14",
+    "object.values": "^1.0.4"
   },
   "private": true
 }
