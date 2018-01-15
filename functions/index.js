@@ -14,6 +14,11 @@ const USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleW
 
 const DAILY_LUNCH_BUDGET = 40;
 
+process.on('unhandledRejection', (reason, p) => {
+  console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
+  // application specific logging, throwing an error, or other logic here
+});
+
 function createService() {
   return axios.create({
     baseURL: TENBIS_API_URL,
@@ -60,46 +65,53 @@ exports.tenbisLogin = functions.https.onRequest((req, res) => {
 
 exports.getTransactions = functions.https.onRequest((req, res) => {
   const userId = req.body.userId;
+  const tenbisUid = req.body.tenbisUid;
 
   const service = createService();
 
-  fetchTenbisUid(userId)
-    .then(tenbisUid => fetchTransactions(tenbisUid))
-    .then(transactions => res.status(200).send(buildResponse(transactions)))
-    .catch((status, data) => {
-      res.status(status).send(data);
-      return;
+  fetchTenbisUid(userId, tenbisUid)
+    .then(tenbisUid => fetchTransactions(service, tenbisUid))
+    .then(transactions => buildResponse(transactions))
+    .then(response => res.status(200).send(response))
+    .catch(err => {
+      console.log(err);
+      if (err.status && err.data) {
+        res.status(err.status).render('error', err.data);
+      } else {
+        res.status(500).render('error', {error: err});
+      }
     });
 });
 
-function fetchTenbisUid(userId) {
+function fetchTenbisUid(userId, tenbisUid) {
+  if (tenbisUid) {
+    return Promise.resolve(tenbisUid);
+  }
+
   return new Promise((resolve, reject) => {
     const docRef = db.collection('users').document(userId);
     docRef.get()
       .then(doc => {
         if (!doc.exists) {
-          reject(404, "Could not find document");
+          reject({status: 404, data: "Could not find document"});
         } else {
           resolve(doc.data().tenbisUid);
         }
-      });
+      })
+      .catch(err => Promise.reject(err));
   });
 }
 
-function fetchTransactions(tenbisUid) {
+function fetchTransactions(service, tenbisUid) {
   return new Promise((resolve, reject) => {
     service.get(`UserTransactionsReport?encryptedUserId=${tenbisUid}&dateBias=0&WebsiteId=10bis&DomainId=10bis`)
-      .then(response => {
-        resolve(parseTransactions(response.data.Transactions));
-      })
-      .catch(error => {
-        reject(error.response.status, error.response.data);
-      });
+      .then(response => resolve(parseTransactions(response.data.Transactions)))
+      .catch(error => reject(error.response));
   });
 }
 
 function parseTransactions(transactionsJson) {
-  transactionsJson.map(entry => {
+  return transactionsJson.map(entry => {
     return {
       id: entry.TransactionId,
       date: parseTransactionDate(entry.TransactionDate),
@@ -113,21 +125,36 @@ function parseTransactions(transactionsJson) {
 }
 
 function buildResponse(transactions) {
-  date = moment.tz(transactions[0].date, 'Asia/Jerusalem');
-  const year = date.year();
-  const month = date.month();
+  try {
+    date = moment.tz(transactions[0].date, 'Asia/Jerusalem');
+    const year = date.year();
+    const month = date.month();
 
-  return {
-    summary: {
-      workDays: getWorkDays(year, month),
-      remainingWorkDays: getRemainingWorkDays(),
-      monthlyLunchBudget: getWorkDays(year, month) * DAILY_LUNCH_BUDGET,
-      remainingMonthlyLunchBudget: getRemainingMonthlyLunchBudget(transactions),
-      averageLunchSpending: getAverageLunchSpending(),
-      remainingAverageLunchSpending: getRemainingAverageLunchSpending(),
-    },
-    transactions: transactions,
-  }
+    const workDays = getWorkDays(year, month);
+    const remainingWorkDays = getRemainingWorkDays();
+    const monthlyLunchBudget = workDays * DAILY_LUNCH_BUDGET
+    const totalSpent = sumTransactions(transactions);
+    const remainingMonthlyLunchBudget = monthlyLunchBudget - totalSpent;
+    const averageLunchSpending = totalSpent / transactions.length;
+    const remainingAverageLunchSpending = remainingMonthlyLunchBudget / remainingWorkDays;
+
+    const response = {
+      summary: {
+        workDays: workDays,
+        remainingWorkDays: remainingWorkDays,
+        monthlyLunchBudget: monthlyLunchBudget,
+        totalSpent: totalSpent,
+        remainingMonthlyLunchBudget: remainingMonthlyLunchBudget,
+        averageLunchSpending: averageLunchSpending,
+        remainingAverageLunchSpending: remainingAverageLunchSpending,
+      },
+      transactions: transactions,
+    }
+    
+    return Promise.resolve(response);
+  } catch (error) {
+    return Promise.reject(error);
+  }  
 }
 
 function parseTransactionDate(transactionDate) {
@@ -155,7 +182,7 @@ function getRemainingWorkDays() {
   let day = moment.tz('Asia/Jerusalem');
   const month = day.month();
 
-  const remainingDays = 0;
+  let remainingDays = 0;
   while (day.month() == month) {
     if (day.isoWeekday()) {
       remainingDays++;
@@ -179,15 +206,10 @@ function getMonthHolidays(year, month) {
     .filter(event => {
       !event.name.includes('Shabbat') && !event.name.includes('Rosh Chodesh')
     });
-
-
 }
 
-function getRemainingMonthlyLunchBudget(transactions) {
-  const totalSpent = transactions
-                      .map(t => t.amount)
-                      .reduce((total, amount) => total + amount);
-
-  const totalMonthBudget = getWorkDays() * DAILY_LUNCH_BUDGET;
-  return totalMonthBudget - totalSpent;
+function sumTransactions(transactions) {
+  return transactions
+    .map(t => t.amount)
+    .reduce((total, amount) => total + amount);
 }
