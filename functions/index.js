@@ -76,9 +76,9 @@ exports.getTransactions = functions.https.onRequest((req, res) => {
     .catch(err => {
       console.log(err);
       if (err.status && err.data) {
-        res.status(err.status).render('error', err.data);
+        res.status(err.status).send(JSON.stringify(err.data.toJSON()));
       } else {
-        res.status(500).render('error', {error: err});
+        res.status(500).send(JSON.stringify(err.toJSON()));
       }
     });
 });
@@ -131,17 +131,17 @@ function buildResponse(transactions) {
     const month = date.month();
 
     const workDays = getWorkDays(year, month);
-    const remainingWorkDays = getRemainingWorkDays();
-    const monthlyLunchBudget = workDays * DAILY_LUNCH_BUDGET
-    const totalSpent = sumTransactions(transactions);
+    const remainingLunches = getRemainingLunches(transactions);
+    const monthlyLunchBudget = workDays * DAILY_LUNCH_BUDGET;
+    const totalSpent = sumLunchTransactions(transactions);
     const remainingMonthlyLunchBudget = monthlyLunchBudget - totalSpent;
     const averageLunchSpending = totalSpent / transactions.length;
-    const remainingAverageLunchSpending = remainingMonthlyLunchBudget / remainingWorkDays;
+    const remainingAverageLunchSpending = remainingMonthlyLunchBudget / remainingLunches;
 
     const response = {
       summary: {
         workDays: workDays,
-        remainingWorkDays: remainingWorkDays,
+        remainingLunches: remainingLunches,
         monthlyLunchBudget: monthlyLunchBudget,
         totalSpent: totalSpent,
         remainingMonthlyLunchBudget: remainingMonthlyLunchBudget,
@@ -159,7 +159,7 @@ function buildResponse(transactions) {
 
 function parseTransactionDate(transactionDate) {
   const matches = /(\d+)/.exec(transactionDate);
-  return moment.tz(parseInt(matches[0]), 'Asia/Jerusalem').format();
+  return moment.tz(parseInt(matches[0]), 'Asia/Jerusalem');
 }
 
 function getWorkDays(year, month) {
@@ -178,20 +178,35 @@ function getWorkDays(year, month) {
   return workDays;
 }
 
-function getRemainingWorkDays() {
+function getRemainingLunches(transactions) {
+  let remainingLunches = 0;
   let date = moment.tz('Asia/Jerusalem');
-  const month = date.month();
+  const currentMonth = date.month();
 
-  let remainingDays = 0;
-  while (date.month() == month) {
+  if (!hasRemainingLunchToday(transactions, date)) {
+    date = date.add(1, 'days');
+  }
+
+  while (date.month() == currentMonth) {
     if (date.day() < 5) { // Fri: 5, Sat: 6
-      remainingDays++;
+      remainingLunches++;
     }
 
     date = date.add(1, 'days');
   }
 
-  return remainingDays;
+  return remainingLunches;
+}
+
+function hasRemainingLunchToday(transactions, date) {
+  if (date.hour() >= 17) {
+    return false;
+  }
+
+  const todayLunchTransaction = transactions
+    .find(t => t.date.isSame(date, 'day') && t.date.hour() > 17);
+  
+  return todayLunchTransaction ? false : true;
 }
 
 function getMonthHolidays(year, month) {
@@ -208,8 +223,9 @@ function getMonthHolidays(year, month) {
     });
 }
 
-function sumTransactions(transactions) {
+function sumLunchTransactions(transactions) {
   return transactions
+    .filter(t => t.date.hour() < 17)
     .map(t => t.amount)
     .reduce((total, amount) => total + amount);
 }
