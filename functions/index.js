@@ -20,7 +20,24 @@ const USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleW
 const DAILY_LUNCH_BUDGET = 40;
 const MAX_LUNCH_LIMIT = 150;
 
-const HOLIDAY_NAMES = []; // TODO fill PayPal holidays names
+const HOLIDAY_NAMES = [
+  "Pesach: 1",
+  "Pesach: 2",
+  "Pesach: 7",
+  "Pesach: 8",
+  "Erev Shavuot",
+  "Shavuot 1",
+  "Yom HaAtzma\ut",
+  "Erev Rosh Hashana",
+  "Rosh Hashana 1",
+  "Rosh Hashana 2",
+  "Erev Yom Kippur",
+  "Yom Kippur",
+  "Erev Sukkot",
+  "Sukkot: 1",
+  "Shmini Atzeret",
+  "Simchat Torah",
+];
 
 process.on('unhandledRejection', (reason, p) => {
   console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
