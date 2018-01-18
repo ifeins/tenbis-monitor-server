@@ -27,7 +27,7 @@ const HOLIDAY_NAMES = [
   "Pesach: 8",
   "Erev Shavuot",
   "Shavuot 1",
-  "Yom HaAtzma\ut",
+  "Yom HaAtzma\\ut",
   "Erev Rosh Hashana",
   "Rosh Hashana 1",
   "Rosh Hashana 2",
