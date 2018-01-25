@@ -120,6 +120,11 @@ function getReportDocRef(date) {
 
 function renderError(res, err) {
   console.log(err);
+  if (!err) {
+    res.sendStatus(500);
+    return;
+  }
+
   if (err.status && err.data) {
     res.status(err.status).send(JSON.stringify(err.data.toString()));
   } else {
