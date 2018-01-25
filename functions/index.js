@@ -1,7 +1,6 @@
 const axios = require('axios');
-const moment = require('moment');
+const moment = require('moment-timezone');
 const values = require('object.values');
-require('moment-timezone');
 require('string.prototype.padstart').shim();
 
 const Hebcal = require('hebcal');
@@ -119,7 +118,7 @@ function getReportDocRef(date) {
 }
 
 function renderError(res, err) {
-  console.log(err);
+  console.log(`Rendering error: ${err}`);
   if (!err) {
     res.sendStatus(500);
     return;
@@ -170,10 +169,18 @@ function fetchTenbisUid(userId, tenbisUid) {
 }
 
 function fetchTransactions(service, tenbisUid) {
+  console.log(`Fetching transactions for tenbis ID: ${tenbisUid}`);
   return new Promise((resolve, reject) => {
     service.get(`UserTransactionsReport?encryptedUserId=${tenbisUid}&dateBias=0&WebsiteId=10bis&DomainId=10bis`)
-      .then(response => resolve(parseTransactions(response.data.Transactions)))
-      .catch(error => reject(error.response));
+      .then((response) => {console.log("Received response"); resolve(parseTransactions(response.data.Transactions))})
+      .catch((error) => {
+        console.log("Received error");
+        if (error.response) {
+          reject(error.response)
+        } else {
+          reject(error);
+        }
+      });
   });
 }
 
