@@ -133,6 +133,7 @@ function renderError(res, err) {
 }
 
 function fetchMonthlySummary(userId, tenbisUid) {
+  console.log(`Fetching monthly summary for user ${userId}`);
   const service = createService();
 
   return new Promise((resolve, reject) => {
@@ -146,20 +147,25 @@ function fetchMonthlySummary(userId, tenbisUid) {
 
 function fetchTenbisUid(userId, tenbisUid) {
   if (tenbisUid) {
+    console.log(`Tenbis UID provided: ${tenbisUid}`);
     return Promise.resolve(tenbisUid);
   }
 
+  console.log(`Fetching tenbis UID for user ${userId}`);
   return new Promise((resolve, reject) => {
     const docRef = db.collection('users').doc(userId);
+    console.log("Getting document data");
     docRef.get()
       .then(doc => {
         if (!doc.exists) {
+          console.log("Document does not exist");
           reject({status: 404, data: "Could not find document"});
         } else {
+          console.log("Document exists");
           resolve(doc.data().tenbisUid);
         }
       })
-      .catch(err => reject(err));
+      .catch(err => console.log(`Error: ${err}`); reject(err));
   });
 }
 
