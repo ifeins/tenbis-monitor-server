@@ -79,11 +79,9 @@ exports.tenbisLogin = functions.https.onRequest((req, res) => {
       if (error.response) {
         res.status(error.response.status).send(error.response.data);
       } else if (error.request) {
-        console.log(error.request);
-        res.sendStatus(500);
+        renderError(res, error.request);
       } else {
-        console.log(error.message);
-        res.sendStatus(500);
+        renderError(res, error.message);
       }
     });
 });
@@ -101,7 +99,7 @@ exports.updateTransactions = functions.https.onRequest((req, res) => {
     .catch(err => renderError(res, err));
 });
 
-exports.getTransactions = functions.https.onRequest((req, res) => {
+exports.fetch_transactions = functions.https.onRequest((req, res) => {
   const userId = req.body.userId;
   const tenbisUid = req.body.tenbisUid;
 
@@ -138,33 +136,29 @@ function fetchMonthlySummary(userId, tenbisUid) {
   return new Promise((resolve, reject) => {
     fetchTenbisUid(userId, tenbisUid)
       .then((tenbisUid) => fetchTransactions(service, tenbisUid))
-      .then((transactions) => {console.log(`Transactions: ${transactions}`); return buildResponse(transactions)})
-      .then((response) => {console.log(`Response: ${response}`); resolve(response)})
+      .then((transactions) => buildResponse(transactions))
+      .then((response) => resolve(response))
       .catch((err) => reject(err));
   });  
 }
 
 function fetchTenbisUid(userId, tenbisUid) {
   if (tenbisUid) {
-    console.log(`Tenbis UID provided: ${tenbisUid}`);
     return Promise.resolve(tenbisUid);
   }
 
   console.log(`Fetching tenbis UID for user ${userId}`);
   return new Promise((resolve, reject) => {
     const docRef = db.collection('users').doc(userId);
-    console.log("Getting document data");
     docRef.get()
       .then(doc => {
         if (!doc.exists) {
-          console.log("Document does not exist");
           reject({status: 404, data: "Could not find document"});
         } else {
-          console.log("Document exists");
           resolve(doc.data().tenbisUid);
         }
       })
-      .catch(err => {console.log(`Error: ${err}`); reject(err)});
+      .catch((err) => reject(err));
   });
 }
 
@@ -172,9 +166,8 @@ function fetchTransactions(service, tenbisUid) {
   console.log(`Fetching transactions for tenbis ID: ${tenbisUid}`);
   return new Promise((resolve, reject) => {
     service.get(`UserTransactionsReport?encryptedUserId=${tenbisUid}&dateBias=0&WebsiteId=10bis&DomainId=10bis`)
-      .then((response) => {console.log("Received response"); resolve(parseTransactions(response.data.Transactions))})
+      .then((response) => resolve(parseTransactions(response.data.Transactions)))
       .catch((error) => {
-        console.log("Received error");
         if (error.response) {
           reject(error.response)
         } else {
