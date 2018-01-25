@@ -98,7 +98,7 @@ exports.getTransactions = functions.https.onRequest((req, res) => {
     .then(tenbisUid => fetchTransactions(service, tenbisUid))
     .then(transactions => buildResponse(transactions))
     .then(response => res.status(200).send(response))
-    .catch(err => {
+    .catch((err) => {
       console.log(err);
       if (err.status && err.data) {
         res.status(err.status).send(JSON.stringify(err.data.toString()));
@@ -156,21 +156,21 @@ function buildResponse(transactions) {
     const month = date.month();
 
     const workDays = getWorkDays(year, month);
-    const remainingLunches = getRemainingLunches(transactions);
     const monthlyLunchBudget = workDays * DAILY_LUNCH_BUDGET;
     const totalSpent = sumLunchTransactions(transactions);
-    const remainingMonthlyLunchBudget = monthlyLunchBudget - totalSpent;
     const averageLunchSpending = getAverageLunchSpending(totalSpent, transactions);
+    const remainingMonthlyLunchBudget = Math.max(0, monthlyLunchBudget - totalSpent);
+    const remainingLunches = getRemainingLunches(transactions);
     const remainingAverageLunchSpending = getRemainingAverageLunchSpending(remainingMonthlyLunchBudget, remainingLunches);
 
     const response = {
       summary: {
         workDays: workDays,
-        remainingLunches: remainingLunches,
         monthlyLunchBudget: monthlyLunchBudget,
         totalSpent: totalSpent,
-        remainingMonthlyLunchBudget: remainingMonthlyLunchBudget,
         averageLunchSpending: averageLunchSpending,
+        remainingMonthlyLunchBudget: remainingMonthlyLunchBudget,
+        remainingLunches: remainingLunches,                                
         remainingAverageLunchSpending: remainingAverageLunchSpending,
       },
       transactions: transactions,
