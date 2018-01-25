@@ -159,7 +159,7 @@ function fetchTenbisUid(userId, tenbisUid) {
           resolve(doc.data().tenbisUid);
         }
       })
-      .catch(err => Promise.reject(err));
+      .catch(err => reject(err));
   });
 }
 
