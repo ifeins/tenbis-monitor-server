@@ -138,8 +138,8 @@ function fetchMonthlySummary(userId, tenbisUid) {
 
   return new Promise((resolve, reject) => {
     fetchTenbisUid(userId, tenbisUid)
-      .then(tenbisUid => {console.log(`10bis id: ${tenbisUid}`); fetchTransactions(service, tenbisUid)})
-      .then(transactions => {console.log(`Transactions: ${transactions}`); buildResponse(transactions)})
+      .then(tenbisUid => {console.log(`10bis id: ${tenbisUid}`); return fetchTransactions(service, tenbisUid)})
+      .then(transactions => {console.log(`Transactions: ${transactions}`); return buildResponse(transactions)})
       .then(response => {console.log(`Response: ${response}`); resolve(response)})
       .catch(err => reject(err));
   });  
