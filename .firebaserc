@@ -1,6 +1,5 @@
 {
   "projects": {
-    "default": "tenbis-46a46",
-    "tenbis-prod": "tenbis-46a46"
+    "default": "tenbis-monitor"
   }
 }
