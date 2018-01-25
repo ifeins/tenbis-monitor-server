@@ -138,9 +138,9 @@ function fetchMonthlySummary(userId, tenbisUid) {
 
   return new Promise((resolve, reject) => {
     fetchTenbisUid(userId, tenbisUid)
-      .then(tenbisUid => fetchTransactions(service, tenbisUid))
-      .then(transactions => buildResponse(transactions))
-      .then(response => resolve(response))
+      .then(tenbisUid => {console.log(`10bis id: ${tenbisUid}`); fetchTransactions(service, tenbisUid)})
+      .then(transactions => {console.log(`Transactions: ${transactions}`); buildResponse(transactions)})
+      .then(response => {console.log(`Response: ${response}`); resolve(response)})
       .catch(err => reject(err));
   });  
 }
@@ -165,7 +165,7 @@ function fetchTenbisUid(userId, tenbisUid) {
           resolve(doc.data().tenbisUid);
         }
       })
-      .catch(err => console.log(`Error: ${err}`); reject(err));
+      .catch(err => {console.log(`Error: ${err}`); reject(err)});
   });
 }
 
