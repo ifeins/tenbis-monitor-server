@@ -2,6 +2,7 @@ const axios = require('axios');
 const moment = require('moment');
 const values = require('object.values');
 require('moment-timezone');
+require('string.prototype.padstart').shim();
 
 const Hebcal = require('hebcal');
 
@@ -88,25 +89,55 @@ exports.tenbisLogin = functions.https.onRequest((req, res) => {
     });
 });
 
+exports.updateTransactions = functions.https.onRequest((req, res) => {
+  const userId = req.body.userId;
+
+  const date = moment.tz('Asia/Jerusalem');
+  
+  fetchMonthlySummary(userId)
+    .then(response => {
+      const docRef = getReportDocRef(date);
+      docRef.set(response.summary);
+    })
+    .catch(err => renderError(res, err));
+});
+
 exports.getTransactions = functions.https.onRequest((req, res) => {
   const userId = req.body.userId;
   const tenbisUid = req.body.tenbisUid;
 
+  fetchMonthlySummary(userId, tenbisUid)
+    .then(response => res.status(200).send(response))
+    .catch(err => renderError(res, err));
+});
+
+function getReportDocRef(date) {
+  const month = date.month() + 1; // moment returns months that start from 0-11
+  const year = date.year();
+  const docId = `${month.padStart(2, '0')}/${year}}`
+  return db.doc(`users/${userId}/reports/${docId}`);
+}
+
+function renderError(res, err) {
+  console.log(err);
+  if (err.status && err.data) {
+    res.status(err.status).send(JSON.stringify(err.data.toString()));
+  } else {
+    res.status(500).send(JSON.stringify(err.toString()));
+  }
+}
+
+function fetchMonthlySummary(userId, tenbisUid) {
   const service = createService();
 
-  fetchTenbisUid(userId, tenbisUid)
-    .then(tenbisUid => fetchTransactions(service, tenbisUid))
-    .then(transactions => buildResponse(transactions))
-    .then(response => res.status(200).send(response))
-    .catch((err) => {
-      console.log(err);
-      if (err.status && err.data) {
-        res.status(err.status).send(JSON.stringify(err.data.toString()));
-      } else {
-        res.status(500).send(JSON.stringify(err.toString()));
-      }
-    });
-});
+  return new Promise((resolve, reject) => {
+    fetchTenbisUid(userId, tenbisUid)
+      .then(tenbisUid => fetchTransactions(service, tenbisUid))
+      .then(transactions => buildResponse(transactions))
+      .then(response => resolve(response))
+      .catch(err => reject(err));
+  });  
+}
 
 function fetchTenbisUid(userId, tenbisUid) {
   if (tenbisUid) {

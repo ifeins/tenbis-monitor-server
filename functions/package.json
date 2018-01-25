@@ -15,7 +15,8 @@
     "hebcal": "^2.2.6",
     "moment": "^2.20.1",
     "moment-timezone": "^0.5.14",
-    "object.values": "^1.0.4"
+    "object.values": "^1.0.4",
+    "string.prototype.padstart": "^3.0.0"
   },
   "private": true
 }
