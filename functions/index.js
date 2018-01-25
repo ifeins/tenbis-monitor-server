@@ -56,7 +56,7 @@ exports.updateUser = functions.https.onRequest((req, res) => {
   const userId = req.body.userId;  
   const phone = req.body.phone;
 
-  const docRef = db.collection('users').document(userId);
+  const docRef = db.collection('users').doc(userId);
   docRef.set({phone: phone});
 
   res.sendStatus(200);
@@ -72,7 +72,7 @@ exports.tenbisLogin = functions.https.onRequest((req, res) => {
   service.get('/login')
     .then((response) => {
       const tenbisUid = response.data.UserData.EncryptedUserId;
-      const docRef = db.collection('users').document(userId);
+      const docRef = db.collection('users').doc(userId);
       docRef.set({tenbisUid: tenbisUid});
       res.sendStatus(200);
     })
@@ -145,7 +145,7 @@ function fetchTenbisUid(userId, tenbisUid) {
   }
 
   return new Promise((resolve, reject) => {
-    const docRef = db.collection('users').document(userId);
+    const docRef = db.collection('users').doc(userId);
     docRef.get()
       .then(doc => {
         if (!doc.exists) {
