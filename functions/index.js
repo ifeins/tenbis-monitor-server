@@ -93,7 +93,7 @@ exports.updateTransactions = functions.https.onRequest((req, res) => {
   
   fetchMonthlySummary(userId)
     .then(response => {
-      const docRef = getReportDocRef(date);
+      const docRef = getReportDocRef(userId, date);
       docRef.set(response.summary);
     })
     .catch(err => renderError(res, err));
@@ -108,11 +108,11 @@ exports.fetch_transactions = functions.https.onRequest((req, res) => {
     .catch(err => renderError(res, err));
 });
 
-function getReportDocRef(date) {
+function getReportDocRef(userId, date) {
   const month = date.month() + 1; // moment returns months that start from 0-11
   const year = date.year();
-  const docId = `${month.padStart(2, '0')}/${year}}`
-  return db.doc(`users/${userId}/reports/${docId}`);
+  const docId = `${month.toString().padStart(2, '0')}-${year}`;
+  return db.collection('users').doc(userId).collection('reports').doc(docId);
 }
 
 function renderError(res, err) {
