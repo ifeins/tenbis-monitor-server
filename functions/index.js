@@ -51,42 +51,23 @@ function createService() {
   });
 }
 
-exports.updateUser = functions.https.onRequest((req, res) => {
-  const userId = req.body.userId;  
-  const phone = req.body.phone;
-
-  const docRef = db.collection('users').doc(userId);
-  docRef.set({phone: phone});
-
-  res.sendStatus(200);
-});
-
-exports.tenbisLogin = functions.https.onRequest((req, res) => {
+exports.createUser = functions.https.onRequest((req, res) => {
   const userId = req.body.userId;
   const email = req.body.email;
   const password = req.body.password;
 
-  const service = createService();
-
-  service.get('/login')
-    .then((response) => {
-      const tenbisUid = response.data.UserData.EncryptedUserId;
+  tenbisLogin(email, password)
+    .then(tenbisUser => {
       const docRef = db.collection('users').doc(userId);
-      docRef.set({tenbisUid: tenbisUid});
+      docRef.set({tenbisUid: tenbisUser.EncryptedUserId});
       res.sendStatus(200);
     })
-    .catch((error) => {
-      if (error.response) {
-        res.status(error.response.status).send(error.response.data);
-      } else if (error.request) {
-        renderError(res, error.request);
-      } else {
-        renderError(res, error.message);
-      }
-    });
+    .catch(error => {
+      renderError(res, error);
+    })
 });
 
-exports.updateTransactions = functions.https.onRequest((req, res) => {
+exports.refreshUserData = functions.https.onRequest((req, res) => {
   const userId = req.body.userId;
 
   const date = moment.tz('Asia/Jerusalem');
@@ -104,14 +85,27 @@ exports.updateTransactions = functions.https.onRequest((req, res) => {
     .catch(err => renderError(res, err));
 });
 
-exports.fetch_transactions = functions.https.onRequest((req, res) => {
-  const userId = req.body.userId;
-  const tenbisUid = req.body.tenbisUid;
+function tenbisLogin(email, password) {
+  const service = createService();
 
-  fetchMonthlySummary(userId, tenbisUid)
-    .then(response => res.status(200).send(response))
-    .catch(err => renderError(res, err));
-});
+  return new Promise((resolve, reject) => {
+    service.get('/login')
+      .then(response => {
+        resolve(response.data.UserData);
+      })
+      .catch(error => {
+        if (error.response) {
+          reject(error.response);
+        } else if (error.request) {
+          reject(error.request);
+        } else if (error.message) {
+          reject(error.message);
+        } else {
+          reject(error);
+        }
+      });
+  });
+}
 
 function getReportDocRef(userId, date) {
   const month = date.month() + 1; // moment returns months that start from 0-11
