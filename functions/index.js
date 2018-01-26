@@ -95,6 +95,7 @@ exports.updateTransactions = functions.https.onRequest((req, res) => {
     .then(response => {
       const docRef = getReportDocRef(userId, date);
       docRef.set(response.summary);
+      res.sendStatus(200);
     })
     .catch(err => renderError(res, err));
 });
