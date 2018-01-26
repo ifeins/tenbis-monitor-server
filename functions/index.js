@@ -95,6 +95,10 @@ exports.updateTransactions = functions.https.onRequest((req, res) => {
     .then(response => {
       const docRef = getReportDocRef(userId, date);
       docRef.set(response.summary);
+      response.transactions.forEach(transaction => {
+        transaction.date = transaction.date.format();
+        docRef.collection('transactions').doc(transaction.id.toString()).set(transaction);
+      });
       res.sendStatus(200);
     })
     .catch(err => renderError(res, err));
@@ -179,6 +183,8 @@ function fetchTransactions(service, tenbisUid) {
 }
 
 function parseTransactions(transactionsJson) {
+  if (!transactionsJson) return [];
+
   return transactionsJson.map(entry => {
     return {
       id: entry.TransactionId,
