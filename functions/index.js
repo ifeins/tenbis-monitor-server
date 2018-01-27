@@ -89,7 +89,17 @@ function tenbisLogin(email, password) {
   const service = createService();
 
   return new Promise((resolve, reject) => {
-    service.get('/login')
+    const promise = service.get('/login', {
+      params: {
+        SocialLoginUID: 0, 
+        websiteId: '10bis', 
+        UserName: email, 
+        domainID: '10bis', 
+        Password: password
+      }
+    });
+
+    promise
       .then(response => {
         if (response.data.Success) {
           resolve(response.data.UserData);
