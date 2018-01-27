@@ -91,8 +91,11 @@ function tenbisLogin(email, password) {
   return new Promise((resolve, reject) => {
     service.get('/login')
       .then(response => {
-        console.log(response);
-        resolve(response.data.UserData);
+        if (response.data.Success) {
+          resolve(response.data.UserData);
+        } else {
+          reject({status: 401, data: response.data.Error.ErrorDesc});
+        }
       })
       .catch(error => {
         if (error.response) {
