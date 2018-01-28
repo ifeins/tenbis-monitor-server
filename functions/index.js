@@ -223,12 +223,12 @@ function buildResponse(transactions) {
     const response = {
       summary: {
         workDays: workDays,
-        monthlyLunchBudget: monthlyLunchBudget,
-        totalSpent: totalSpent,
-        averageLunchSpending: averageLunchSpending,
-        remainingMonthlyLunchBudget: remainingMonthlyLunchBudget,
+        monthlyLunchBudget: monthlyLunchBudget.toFixed(2),
+        totalSpent: totalSpent.toFixed(2),
+        averageLunchSpending: averageLunchSpending.toFixed(2),
+        remainingMonthlyLunchBudget: remainingMonthlyLunchBudget.toFixed(2),
         remainingLunches: remainingLunches,                                
-        remainingAverageLunchSpending: remainingAverageLunchSpending,
+        remainingAverageLunchSpending: remainingAverageLunchSpending.toFixed(2),
       },
       transactions: transactions,
     }
