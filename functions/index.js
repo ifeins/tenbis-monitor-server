@@ -219,6 +219,7 @@ function buildResponse(transactions) {
     const remainingMonthlyLunchBudget = Math.max(0, monthlyLunchBudget - totalSpent);
     const remainingLunches = getRemainingLunches(transactions);
     const remainingAverageLunchSpending = getRemainingAverageLunchSpending(remainingMonthlyLunchBudget, remainingLunches);
+    const updatedAt = moment.tz('Asia/Jerusalem').format();
 
     const response = {
       summary: {
@@ -229,6 +230,7 @@ function buildResponse(transactions) {
         remainingMonthlyLunchBudget: remainingMonthlyLunchBudget.toFixed(2),
         remainingLunches: remainingLunches,                                
         remainingAverageLunchSpending: remainingAverageLunchSpending.toFixed(2),
+        updatedAt: updatedAt,
       },
       transactions: transactions,
     }
