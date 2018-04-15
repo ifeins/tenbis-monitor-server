@@ -1,43 +1,18 @@
 const axios = require('axios');
 const moment = require('moment-timezone');
-const values = require('object.values');
 require('string.prototype.padstart').shim();
-
-const Hebcal = require('hebcal');
 
 const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 admin.initializeApp(functions.config().firebase);
 const db = admin.firestore();
-
-if (!Object.values) {
-  values.shim();
-}
+const TimeUtils = require('./time-utils');
 
 const TENBIS_API_URL = 'https://www.10bis.co.il/api'
 const USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleWebKit/534.46 (KHTML, like Gecko) Version/5.1 Mobile/9A334 Safari/7534.48.3'
 
 const DAILY_LUNCH_BUDGET = 40;
 const MAX_LUNCH_LIMIT = 150;
-
-const HOLIDAY_NAMES = [
-  "Pesach: 1",
-  "Pesach: 2",
-  "Pesach: 7",
-  "Pesach: 8",
-  "Erev Shavuot",
-  "Shavuot 1",
-  "Yom HaAtzma\\ut",
-  "Erev Rosh Hashana",
-  "Rosh Hashana 1",
-  "Rosh Hashana 2",
-  "Erev Yom Kippur",
-  "Yom Kippur",
-  "Erev Sukkot",
-  "Sukkot: 1",
-  "Shmini Atzeret",
-  "Simchat Torah",
-];
 
 process.on('unhandledRejection', (reason, p) => {
   console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
@@ -212,7 +187,7 @@ function buildResponse(transactions) {
     const year = date.year();
     const month = date.month();
 
-    const workDays = getWorkDays(year, month);
+    const workDays = TimeUtils.getWorkDays(year, month);
     const monthlyLunchBudget = workDays * DAILY_LUNCH_BUDGET;
     const totalSpent = sumLunchTransactions(transactions);
     const averageLunchSpending = getAverageLunchSpending(totalSpent, transactions);
@@ -246,28 +221,11 @@ function parseTransactionDate(transactionDate) {
   return moment.tz(parseInt(matches[0]), 'Asia/Jerusalem');
 }
 
-function getWorkDays(year, month) {
-  let date = moment([year, month, 1]);
-  let workDays = 0;
-  const holidays = getMonthHolidays(year, month);
-
-  // as long as we haven't moved to the next month
-  while (date.month() == month) {
-    if (isWorkDay(holidays, date)) {
-      workDays++;
-    }
-
-    date = date.add(1, 'days');
-  }
-
-  return workDays;
-}
-
 function getRemainingLunches(transactions) {
   let remainingLunches = 0;
   let date = moment.tz('Asia/Jerusalem');
   const currentMonth = date.month();
-  const holidays = getMonthHolidays(date.year(), date.month());
+  const holidays = TimeUtils.getMonthHolidays(date.year(), date.month());
 
   while (date.month() == currentMonth) {
     if (hasRemainingLunch(transactions, holidays, date)) {
@@ -281,7 +239,7 @@ function getRemainingLunches(transactions) {
 }
 
 function hasRemainingLunch(transactions, holidays, date) {
-  if (date.hour() >= 17 || !isWorkDay(holidays, date)) {
+  if (date.hour() >= 17 || !TimeUtils.isWorkDay(holidays, date)) {
     return false;
   }
 
@@ -310,28 +268,4 @@ function sumLunchTransactions(transactions) {
     .filter(t => t.date.hour() < 17)
     .map(t => t.amount)
     .reduce((total, amount) => total + amount);
-}
-
-function getMonthHolidays(year, month) {
-  const gregYear = new Hebcal.GregYear(year, month + 1);
-  const holidays = 
-    Object.values(gregYear.holidays).map(event => {
-      return {
-        name: event[0].desc[0], 
-        date: event[0].date.greg()
-      }
-    })
-    .filter(event => HOLIDAY_NAMES.includes(event.name));
-
-  return holidays;
-}
-
-function isWorkDay(holidays, date) {
-  // Fri: 5, Sat: 6
-  return date.day() < 5 && !isHoliday(holidays, date);
-}
-
-function isHoliday(holidays, date) {
-  const holiday = holidays.find(holiday => moment(holiday.date).isSame(date, 'day'));
-  return holiday ? true : false;
 }
