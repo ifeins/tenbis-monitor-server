@@ -104,7 +104,7 @@ function getReportDocRef(userId, date) {
 }
 
 function renderError(res, err) {
-  console.log(`Rendering error: ${err}`);
+  console.log('Rendering error', err);
   if (!err) {
     res.sendStatus(500);
     return;
@@ -153,7 +153,7 @@ function fetchTenbisUid(userId, tenbisUid) {
 function fetchTransactions(service, tenbisUid) {
   console.log(`Fetching transactions for tenbis ID: ${tenbisUid}`);
   return new Promise((resolve, reject) => {
-    service.get(`UserTransactionsReport?encryptedUserId=${tenbisUid}&dateBias=0&WebsiteId=10bis&DomainId=10bis`)
+    service.get(`UserTransactionsReport?encryptedUserId=${encodeURIComponent(tenbisUid)}&dateBias=0&WebsiteId=10bis&DomainId=10bis`)
       .then((response) => resolve(parseTransactions(response.data.Transactions)))
       .catch((error) => {
         if (error.response) {
