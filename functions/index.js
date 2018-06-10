@@ -111,7 +111,7 @@ function renderError(res, err) {
   }
 
   if (err.status && err.data) {
-    res.status(err.status).send(JSON.stringify(err.data.toString()));
+    res.status(err.status).send(JSON.stringify(err.data));
   } else {
     res.status(500).send(JSON.stringify(err.toString()));
   }
@@ -140,8 +140,8 @@ function fetchTenbisUid(userId, tenbisUid) {
     const docRef = db.collection('users').doc(userId);
     docRef.get()
       .then(doc => {
-        if (!doc.exists) {
-          reject({status: 404, data: "Could not find document"});
+        if (!doc.exists || !doc.data().tenbisUid) {
+          reject({status: 404, data: "Could not find 10bis id"});
         } else {
           resolve(doc.data().tenbisUid);
         }
