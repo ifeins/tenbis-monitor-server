@@ -14,6 +14,8 @@ const USER_AGENT = 'Mozilla/5.0 (iPhone; CPU iPhone OS 5_0 like Mac OS X) AppleW
 const DAILY_LUNCH_BUDGET = 40;
 const MAX_LUNCH_LIMIT = 150;
 
+const CODE_NO_10BIS_ID = "NO_10BIS_ID";
+
 process.on('unhandledRejection', (reason, p) => {
   console.log('Unhandled Rejection at: Promise', p, 'reason:', reason);
   // application specific logging, throwing an error, or other logic here
@@ -141,7 +143,7 @@ function fetchTenbisUid(userId, tenbisUid) {
     docRef.get()
       .then(doc => {
         if (!doc.exists || !doc.data().tenbisUid) {
-          reject({status: 404, data: "Could not find 10bis id"});
+          reject({status: 404, data: {message: "Could not find 10bis id", code: CODE_NO_10BIS_ID}});
         } else {
           resolve(doc.data().tenbisUid);
         }
