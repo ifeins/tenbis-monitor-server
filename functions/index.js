@@ -193,7 +193,7 @@ function buildResponse(transactions) {
     const averageLunchSpending = getAverageLunchSpending(totalSpent, transactions);
     const remainingMonthlyLunchBudget = Math.max(0, monthlyLunchBudget - totalSpent);
     const remainingLunches = getRemainingLunches(transactions);
-    const remainingAverageLunchSpending = getRemainingAverageLunchSpending(remainingMonthlyLunchBudget, remainingLunches);
+    const todayBudget = getTodayBudget(remainingMonthlyLunchBudget, remainingLunches);
     const updatedAt = moment.tz('Asia/Jerusalem').format();
 
     const response = {
@@ -204,7 +204,8 @@ function buildResponse(transactions) {
         averageLunchSpending: averageLunchSpending.toFixed(2),
         remainingMonthlyLunchBudget: remainingMonthlyLunchBudget.toFixed(2),
         remainingLunches: remainingLunches,                                
-        remainingAverageLunchSpending: remainingAverageLunchSpending.toFixed(2),
+        remainingAverageLunchSpending: todayBudget.toFixed(2), // keeping for backwards compatibility
+        todayBudget: todayBudget.toFixed(2),
         updatedAt: updatedAt,
       },
       transactions: transactions,
@@ -243,8 +244,10 @@ function hasRemainingLunch(transactions, holidays, date) {
     return false;
   }
 
+  const lunchPeriodStart = date.clone().startOf('day').hour(11).minute(45);
+  const lunchPeriodEnd = date.clone().startOf('day').hour(17);
   const lunchAtGivenDate = transactions
-    .find(t => t.date.isSame(date, 'day') && t.date.hour() < 17);
+    .find(t => t.date.isSame(date, 'day') && t.date.isBetween(lunchPeriodStart, lunchPeriodEnd));
   
   return lunchAtGivenDate ? false : true;
 }
@@ -254,7 +257,7 @@ function getAverageLunchSpending(totalSpent, transactions) {
   return totalSpent / transactions.length;
 }
 
-function getRemainingAverageLunchSpending(remainingMonthlyLunchBudget, remainingLunches) {
+function getTodayBudget(remainingMonthlyLunchBudget, remainingLunches) {
   if (remainingLunches <= 0) return 0;
 
   let average = Math.min(remainingMonthlyLunchBudget / remainingLunches, MAX_LUNCH_LIMIT);
