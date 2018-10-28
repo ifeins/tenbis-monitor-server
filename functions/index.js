@@ -190,8 +190,9 @@ function buildResponse(transactions) {
     const totalSpent = sumLunchTransactions(transactions);
     const averageLunchSpending = getAverageLunchSpending(totalSpent, transactions);
     const remainingMonthlyLunchBudget = Math.max(0, monthlyLunchBudget - totalSpent);
-    const remainingLunches = getRemainingLunches(transactions);
-    const todayBudget = getTodayBudget(remainingMonthlyLunchBudget, remainingLunches);
+    const remainingWorkDays = getRemainingWorkDays();
+    const todayBudget = getTodayBudget(remainingMonthlyLunchBudget, remainingWorkDays, transactions);
+    const nextWorkDayBudget = getNextWorkDayBudget(remainingMonthlyLunchBudget, remainingWorkDays, transactions);
     const updatedAt = moment.tz('Asia/Jerusalem').format();
 
     const response = {
@@ -201,9 +202,9 @@ function buildResponse(transactions) {
         totalSpent: totalSpent.toFixed(2),
         averageLunchSpending: averageLunchSpending.toFixed(2),
         remainingMonthlyLunchBudget: remainingMonthlyLunchBudget.toFixed(2),
-        remainingLunches: remainingLunches,                                
-        remainingAverageLunchSpending: todayBudget.toFixed(2), // keeping for backwards compatibility
+        remainingWorkDays: remainingWorkDays,                                
         todayBudget: todayBudget.toFixed(2),
+        nextWorkDayBudget: nextWorkDayBudget.toFixed(2),
         updatedAt: updatedAt,
       },
       transactions: transactions,
@@ -220,34 +221,20 @@ function parseTransactionDate(transactionDate) {
   return moment.tz(parseInt(matches[0]), 'Asia/Jerusalem');
 }
 
-function getRemainingLunches(transactions) {
-  let remainingLunches = 0;
+function getRemainingWorkDays() {
+  let remainingWorkDays = 0;
   let date = moment.tz('Asia/Jerusalem');
   const currentMonth = date.month();
   const holidays = TimeUtils.getMonthHolidays(date.year(), date.month());
 
   while (date.month() == currentMonth) {
-    if (hasRemainingLunch(transactions, holidays, date)) {
-      remainingLunches++;
+    if (TimeUtils.isWorkDay(holidays, date)) {
+      remainingWorkDays++;
     }
-
     date = date.add(1, 'days').hour(0).minute(0).second(0).millisecond(0);
   }
 
-  return remainingLunches;
-}
-
-function hasRemainingLunch(transactions, holidays, date) {
-  if (date.hour() >= 17 || !TimeUtils.isWorkDay(holidays, date)) {
-    return false;
-  }
-
-  const lunchPeriodStart = date.clone().startOf('day').hour(11).minute(45);
-  const lunchPeriodEnd = date.clone().startOf('day').hour(17);
-  const lunchAtGivenDate = transactions
-    .find(t => t.date.isSame(date, 'day') && t.date.isBetween(lunchPeriodStart, lunchPeriodEnd));
-  
-  return lunchAtGivenDate ? false : true;
+  return remainingWorkDays;
 }
 
 function getAverageLunchSpending(totalSpent, transactions) {
@@ -255,11 +242,31 @@ function getAverageLunchSpending(totalSpent, transactions) {
   return totalSpent / transactions.length;
 }
 
-function getTodayBudget(remainingMonthlyLunchBudget, remainingLunches) {
-  if (remainingLunches <= 0) return 0;
+function getTodayBudget(remainingMonthlyLunchBudget, remainingWorkDays, transactions) {
+  if (remainingWorkDays <= 0 || remainingMonthlyLunchBudget <= 0) return 0;
 
-  let average = Math.min(remainingMonthlyLunchBudget / remainingLunches, MAX_LUNCH_LIMIT);
-  average = Math.max(average, 0);
+  let date = moment.tz('Asia/Jerusalem');
+  const holidays = TimeUtils.getMonthHolidays(date.year(), date.month());
+  if (date.hour() >= 17 || !TimeUtils.isWorkDay(holidays, date)) {
+    return 0;
+  }
+
+  const todayTransactions = transactions.filter(t => t.date.isSame(date, 'day') && t.date.hour() < 17);
+  const todayTransactionsSum = transactions.reduce(((sum, t) => sum + t.amount), 0);
+  let average = Math.min((remainingMonthlyLunchBudget + todayTransactionsSum) / remainingWorkDays, MAX_LUNCH_LIMIT);
+
+  return Math.max(average - todayTransactionsSum, 0);
+}
+
+function getNextWorkDayBudget(remainingMonthlyLunchBudget, remainingWorkDays, transactions) {
+  if (remainingWorkDays <= 1) return -1;
+  if (remainingMonthlyLunchBudget <= 0) return 0;
+
+  let date = moment.tz('Asia/Jerusalem');
+
+  const todayTransactions = transactions.filter(t => t.date.isSame(date, 'day') && t.date.hour() < 17);
+  const todayTransactionsSum = transactions.reduce(((sum, t) => sum + t.amount), 0);
+  let average = Math.min((remainingMonthlyLunchBudget + todayTransactionsSum) / remainingWorkDays, MAX_LUNCH_LIMIT);
 
   return average;
 }
