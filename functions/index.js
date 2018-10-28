@@ -192,7 +192,7 @@ function buildResponse(transactions) {
     const remainingMonthlyLunchBudget = Math.max(0, monthlyLunchBudget - totalSpent);
     const remainingWorkDays = getRemainingWorkDays();
     const todayBudget = getTodayBudget(remainingMonthlyLunchBudget, remainingWorkDays, transactions);
-    const nextWorkDayBudget = getNextWorkDayBudget(remainingMonthlyLunchBudget, remainingWorkDays, transactions);
+    const nextWorkDayBudget = getNextWorkDayBudget(remainingMonthlyLunchBudget, todayBudget, remainingWorkDays);
     const updatedAt = moment.tz('Asia/Jerusalem').format();
 
     const response = {
@@ -252,22 +252,23 @@ function getTodayBudget(remainingMonthlyLunchBudget, remainingWorkDays, transact
   }
 
   const todayTransactions = transactions.filter(t => t.date.isSame(date, 'day') && t.date.hour() < 17);
-  const todayTransactionsSum = transactions.reduce(((sum, t) => sum + t.amount), 0);
+  const todayTransactionsSum = todayTransactions.reduce(((sum, t) => sum + t.amount), 0);
   let average = Math.min((remainingMonthlyLunchBudget + todayTransactionsSum) / remainingWorkDays, MAX_LUNCH_LIMIT);
 
   return Math.max(average - todayTransactionsSum, 0);
 }
 
-function getNextWorkDayBudget(remainingMonthlyLunchBudget, remainingWorkDays, transactions) {
+function getNextWorkDayBudget(remainingMonthlyLunchBudget, todayBudget, remainingWorkDays) {
   if (remainingWorkDays <= 1) return -1;
   if (remainingMonthlyLunchBudget <= 0) return 0;
 
   let date = moment.tz('Asia/Jerusalem');
+  const holidays = TimeUtils.getMonthHolidays(date.year(), date.month());
+  if (TimeUtils.isWorkDay(holidays, date)) {
+    remainingWorkDays--;
+  }
 
-  const todayTransactions = transactions.filter(t => t.date.isSame(date, 'day') && t.date.hour() < 17);
-  const todayTransactionsSum = transactions.reduce(((sum, t) => sum + t.amount), 0);
-  let average = Math.min((remainingMonthlyLunchBudget + todayTransactionsSum) / remainingWorkDays, MAX_LUNCH_LIMIT);
-
+  let average = Math.min((remainingMonthlyLunchBudget - todayBudget) / remainingWorkDays, MAX_LUNCH_LIMIT);
   return average;
 }
 
