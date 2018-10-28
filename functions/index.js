@@ -119,12 +119,12 @@ function renderError(res, err) {
   }
 }
 
-function fetchMonthlySummary(userId, tenbisUid) {
+function fetchMonthlySummary(userId) {
   console.log(`Fetching monthly summary for user ${userId}`);
   const service = createService();
 
   return new Promise((resolve, reject) => {
-    fetchTenbisUid(userId, tenbisUid)
+    fetchTenbisUid(userId)
       .then((tenbisUid) => fetchTransactions(service, tenbisUid))
       .then((transactions) => buildResponse(transactions))
       .then((response) => resolve(response))
@@ -132,11 +132,7 @@ function fetchMonthlySummary(userId, tenbisUid) {
   });  
 }
 
-function fetchTenbisUid(userId, tenbisUid) {
-  if (tenbisUid) {
-    return Promise.resolve(tenbisUid);
-  }
-
+function fetchTenbisUid(userId) {
   console.log(`Fetching tenbis UID for user ${userId}`);
   return new Promise((resolve, reject) => {
     const docRef = db.collection('users').doc(userId);
